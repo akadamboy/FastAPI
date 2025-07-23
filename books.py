@@ -14,7 +14,7 @@ BOOKS = [
 
 
 
-@app.get("/")
+@app.get("/") # home page 
 async def home():
     return {'home page'}
 

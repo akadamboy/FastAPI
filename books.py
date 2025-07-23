@@ -26,7 +26,7 @@ async def greet():
 async def read_all_books():
     return BOOKS 
 
-# passing dynamic parameter through URL
+# passing dynamic path parameter through URL
 
 @app.get("/books/{book_name}")
 async def read_book(book_name):
@@ -50,3 +50,12 @@ async def get_book_by_name(book_name:str): # we can give explicit type. in this 
 
 
     
+# ----- QUERY PARAMETER ----#
+
+@app.get("/book/")  # nothing after /book/ means we need to pass the variable ass query parameter
+async def get_book_by_category(category: str): # query parameter variable name should match the function parameter name
+    for book in BOOKS:
+        if book.get('category').casefold() == category.casefold():
+            return book
+
+

@@ -80,3 +80,31 @@ async def add_book(newBook = Body()):
     BOOKS.append(newBook)
     return "book added"
 
+
+# -----------Learning PUT REQUEST----------------#
+
+
+@app.put("/book/update_book")
+async def update_book(updated_book = Body()):
+    
+    for i in range(len(BOOKS)):
+        if BOOKS[i].get('title').casefold() == updated_book.get('title').casefold():
+            BOOKS[i] =  updated_book
+
+    return "book updated"
+
+
+#--------Learning DELETE REQUEST----------#
+
+@app.delete("/books/delete_book/{book_title}")
+async def delete_book(book_title: str):
+    removed_book = None
+    print("called function")
+    book_len = len(BOOKS)
+    for i in range(book_len):
+        if BOOKS[i].get('title').casefold() == book_title.casefold():
+            print("found book")
+            removed_book = BOOKS.pop(i)  
+        break
+
+    return (f"removed {removed_book}")

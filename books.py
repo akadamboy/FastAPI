@@ -80,3 +80,15 @@ async def add_book(newBook = Body()):
     BOOKS.append(newBook)
     return "book added"
 
+
+# -----------Learning PUT REQUEST----------------#
+
+
+@app.put("/book/update_book")
+async def update_book(updated_book = Body()):
+    
+    for i in range(len(BOOKS)):
+        if BOOKS[i].get('title').casefold() == updated_book.get('title').casefold():
+            BOOKS[i] =  updated_book
+
+    return "book updated"

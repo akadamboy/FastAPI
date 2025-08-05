@@ -1,5 +1,7 @@
+
 from typing import Optional
-from fastapi import Body, FastAPI
+from fastapi import Body, FastAPI, Path, Query
+ # path can be used to validate path variable Query can be used to validate Query parameter
 from pydantic import BaseModel, Field
 
 app = FastAPI()
@@ -7,12 +9,13 @@ app = FastAPI()
 
 class Book:
     
-    def __init__ (self, id, title, author, description, rating):
+    def __init__ (self, id, title, author, description, rating, publish_date):
         self.id = id
         self.title = title
         self.author = author
         self.description = description
         self.rating = rating
+        self.publish_date = publish_date
 
 class BookRequest(BaseModel):    #this object inherit BaseModel and varify the data coming from body
     
@@ -21,6 +24,7 @@ class BookRequest(BaseModel):    #this object inherit BaseModel and varify the d
     author: str = Field(min_length=3)
     description: str = Field(min_length=4, max_length=100)
     rating: int = Field(gt=-1 , le=5)
+    publish_date : int = Field(le=2025)
 
     # giving default values to the fields using pydantic config  
     # class_config was in old version of pydantic new version use model_config
@@ -31,19 +35,20 @@ class BookRequest(BaseModel):    #this object inherit BaseModel and varify the d
                 "title" : "book name 1",
                 "author" : "author 2",
                 "description" : "this is a book about dragons",
-                "rating" : 4
+                "rating" : 4,
+                "publish_date": 2025
             }
         }
 
     }
 
 
-BOOKS = [Book(1, 'Computer Science Pro', 'codingwithroby', 'A very nice book!', 5),
-    Book(2, 'Be Fast with FastAPI', 'codingwithroby', 'A great book!', 5),
-    Book(3, 'Master Endpoints', 'codingwithroby', 'A awesome book!', 5),
-    Book(4, 'HP1', 'Author 1', 'Book Description', 2),
-    Book(5, 'HP2', 'Author 2', 'Book Description', 3),
-    Book(6, 'HP3', 'Author 3', 'Book Description', 1)
+BOOKS = [Book(1, 'Computer Science Pro', 'codingwithroby', 'A very nice book!', 5,2024),
+    Book(2, 'Be Fast with FastAPI', 'codingwithroby', 'A great book!', 5,2024),
+    Book(3, 'Master Endpoints', 'codingwithroby', 'A awesome book!', 5,2023),
+    Book(4, 'HP1', 'Author 1', 'Book Description', 2,2022),
+    Book(5, 'HP2', 'Author 2', 'Book Description', 3,2021),
+    Book(6, 'HP3', 'Author 3', 'Book Description', 1,2021)
 ]
 
 
@@ -80,7 +85,7 @@ async def create_book(new_book :BookRequest):
 
 # function to get book by id
 @app.get("/book/{book_id}")
-async def read_book(book_id: int):
+async def read_book(book_id: int =Path(gt=0)):
 
     for book in BOOKS:
         if book.id == book_id:
@@ -88,8 +93,8 @@ async def read_book(book_id: int):
     return  "book not found"
 
 #code to fech book by raing
-@app.get("/book/")
-async def read_book_by_rating(book_rating :int):
+@app.get("/book/rating/")
+async def read_book_by_rating(book_rating :int = Query(ge=0, le=5)):
     book_by_rating=[]
     for book in BOOKS:
         if book.rating == book_rating:
@@ -103,14 +108,25 @@ async def update_book(book : BookRequest):
             BOOKS[i] = book
     return "book updated"
 
-@app.delete("/book/delete")
-async def delete_book(id : int):
+@app.delete("/book/delete/{id}")
+async def delete_book(id : int = Path(gt=0)):
     for i in range(len(BOOKS)):
         if BOOKS[i].id == id :
             BOOKS.pop(i)
             break
         else:
             return f"no book with id {id}"
+        
+
+@app.get("/book/bydate/")
+def get_book_by_date(publish_date: int =Query(le=2025)):
+    bookbydate =[]
+
+    for i in range(len(BOOKS)):
+        if BOOKS[i].publish_date == publish_date:
+            bookbydate.append(BOOKS[i])
+    return bookbydate
+
 
 
 def set_book_id(book:Book): #function to set the book id 

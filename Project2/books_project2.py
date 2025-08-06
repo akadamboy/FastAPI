@@ -1,9 +1,9 @@
 
 from typing import Optional
-from fastapi import Body, FastAPI, Path, Query
+from fastapi import Body, FastAPI, Path, Query, HTTPException
  # path can be used to validate path variable Query can be used to validate Query parameter
 from pydantic import BaseModel, Field
-
+from starlette import status #fast api is build on starlette and automatically available on importing fast api
 app = FastAPI()
 
 
@@ -52,7 +52,7 @@ BOOKS = [Book(1, 'Computer Science Pro', 'codingwithroby', 'A very nice book!', 
 ]
 
 
-@app.get("/books")
+@app.get("/books", status_code= status.HTTP_200_OK)
 async def books_home():
 
     return BOOKS
@@ -72,7 +72,7 @@ async def books_home():
 #     return "book created"
 
 
-@app.post("/book/create")
+@app.post("/book/create", status_code=status.HTTP_201_CREATED)
 async def create_book(new_book :BookRequest):
     #new_book = Book(**new_book.dict())    #convert the request to Book object instead of BookRequest object
                                            # the .dict() is used in Pydantic V1 and is depricated
@@ -81,19 +81,20 @@ async def create_book(new_book :BookRequest):
     # type of new book change from BookRequest to Book
     
     BOOKS.append(set_book_id(new_book))
-    return f"{new_book} added"
+    # return f"{new_book} added"
+    raise HTTPException(status_code=201, detail="book created")
 
 # function to get book by id
-@app.get("/book/{book_id}")
+@app.get("/book/{book_id}", status_code=status.HTTP_200_OK)
 async def read_book(book_id: int =Path(gt=0)):
 
     for book in BOOKS:
         if book.id == book_id:
             return book  
-    return  "book not found"
+    raise HTTPException(status_code=404 ,detail="item not found in server")
 
 #code to fech book by raing
-@app.get("/book/rating/")
+@app.get("/book/rating/", status_code= status.HTTP_200_OK)
 async def read_book_by_rating(book_rating :int = Query(ge=0, le=5)):
     book_by_rating=[]
     for book in BOOKS:
@@ -101,21 +102,26 @@ async def read_book_by_rating(book_rating :int = Query(ge=0, le=5)):
             book_by_rating.append(book)
     return book_by_rating if len(book_by_rating) >0 else f"no book with rating {book_rating}"
 
-@app.put("/book/update_book")
+@app.put("/book/update_book", status_code=status.HTTP_204_NO_CONTENT)
 async def update_book(book : BookRequest):
+    updated = False
     for i in range(len(BOOKS)):
         if BOOKS[i].id == book.id :
             BOOKS[i] = book
-    return "book updated"
+            updated = True
+    if not updated: raise HTTPException(status_code=404 , detail="Book not found in server")
 
-@app.delete("/book/delete/{id}")
+@app.delete("/book/delete/{id}", status_code= status.HTTP_204_NO_CONTENT) 
 async def delete_book(id : int = Path(gt=0)):
+    deleted = False
     for i in range(len(BOOKS)):
         if BOOKS[i].id == id :
             BOOKS.pop(i)
             break
+
         else:
-            return f"no book with id {id}"
+            raise HTTPException(status_code=404, detail="book not found")
+            
         
 
 @app.get("/book/bydate/")

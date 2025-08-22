@@ -2,7 +2,7 @@ from typing import Annotated, Optional
 from fastapi import FastAPI, Depends, HTTPException, Path, status
 from pydantic import BaseModel, Field
 
-from routers import auth, todosmai
+from routers import auth, todos
 from database import SessionLocal, engine
 from sqlalchemy.orm import Session
 import models

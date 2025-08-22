@@ -1,6 +1,7 @@
 from fastapi import  APIRouter
 from pydantic import BaseModel, EmailStr, Field
 from models import Users
+from passlib.context import CryptContext
 
 # if we use normal app initialization we need different port to run and
 # it will run as different application so we are going to implement routing
@@ -8,6 +9,8 @@ from models import Users
 
 
 router = APIRouter()
+
+bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated = 'auto')
 
 class UserRequest(BaseModel):
     username : str = Field(min_length=3)
@@ -31,11 +34,11 @@ async def create_user(create_user: UserRequest):
     #since the keys are different this will not work and we need to enter them one by one
 
     user_model = Users(
-        email = create_user.email,
-        username = create_user.username,
-        hashed_password = create_user.password,
         first_name = create_user.first_name,
         last_name = create_user.last_name,
+        email = create_user.email,
+        username = create_user.username,
+        hashed_password = bcrypt_context.hash(create_user.password),
         role = create_user.role,
         is_active = True
 

@@ -1,7 +1,11 @@
-from fastapi import  APIRouter
+from typing import Annotated
+from fastapi import  APIRouter, Depends, status
 from pydantic import BaseModel, EmailStr, Field
+from database import SessionLocal
 from models import Users
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
 
 # if we use normal app initialization we need different port to run and
 # it will run as different application so we are going to implement routing
@@ -16,9 +20,30 @@ class UserRequest(BaseModel):
     username : str = Field(min_length=3)
     email : EmailStr 
     first_name : str = Field(min_length=3)
-    last_name :str = Field(min_length=3)
+    last_name :str
     password: str
     role:str
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+
+    finally:
+        db.close()
+
+db_dependency = Annotated[ Session, Depends(get_db) ]
+
+
+# this function verifies the user name pand password entered
+def authenticate_user(username:str, password: str, db:db_dependency):
+    user = db.query(Users).filter(Users.username == username).first()
+    if not user:
+        return False
+    if not bcrypt_context.verify(password, user.hashed_password,):
+        return False
+    return True
+
 
 @router.get("/auth/")
 async def get_user():
@@ -26,8 +51,8 @@ async def get_user():
     return {'user': 'authenthicated'}
 
 
-@router.post("/auth/createuser/")
-async def create_user(create_user: UserRequest):
+@router.post("/auth/createuser/", status_code= status.HTTP_201_CREATED)
+async def create_user(create_user: UserRequest, db :db_dependency):
 
     # user_model = Users(**create_user.model_dump())
     # model dump() will not work since the request body have password and the db model have hashed password as key.
@@ -43,6 +68,23 @@ async def create_user(create_user: UserRequest):
         is_active = True
 
     )
+    db.add(user_model)
+    db.commit()
 
 
     return {user_model}
+
+
+@router.get("/auth/get_all/", status_code=status.HTTP_200_OK)
+def get_all_user(db:db_dependency):
+    return db.query(Users).all()
+
+
+@router.post("/token")
+async def login_for_toker(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+                          db : db_dependency):
+    user = authenticate_user(form_data.username, form_data.password, db)
+    if not user:
+        return 'username and password doest match'
+    return 'authentication success'
+

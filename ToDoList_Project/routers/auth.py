@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import  APIRouter, Depends, status
 from pydantic import BaseModel, EmailStr, Field
@@ -6,6 +7,7 @@ from models import Users
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
 
 # if we use normal app initialization we need different port to run and
 # it will run as different application so we are going to implement routing
@@ -13,6 +15,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 
 router = APIRouter()
+
+SECRET_KEY ='1280b4cbcc3b73c4891785d9adced5102421d5d9d4f0e04b3d6c31b58d9ff8a7'
+#i used "openssl rand -hex 32" this command to generate this random string
+ALGORITHM = 'HS256' 
+
+
 
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated = 'auto')
 
@@ -40,9 +48,23 @@ def authenticate_user(username:str, password: str, db:db_dependency):
     user = db.query(Users).filter(Users.username == username).first()
     if not user:
         return False
-    if not bcrypt_context.verify(password, user.hashed_password,):
+    if not bcrypt_context.verify(password, user.hashed_password):
         return False
-    return True
+    return user
+
+
+def generate_token(username: str, user_id: int, expire_time: timedelta):
+
+    encode_data = {'sub': username,
+              'id': user_id}
+    
+
+    # expire = datetime.utcnow() -> this one is depricated
+    expire = datetime.now(timezone.utc) + expire_time
+    encode_data.update({'exp':expire})
+    token = jwt.encode(encode_data, SECRET_KEY, algorithm = ALGORITHM)
+    return token
+
 
 
 @router.get("/auth/")
@@ -86,5 +108,6 @@ async def login_for_toker(form_data: Annotated[OAuth2PasswordRequestForm, Depend
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         return 'username and password doest match'
-    return 'authentication success'
+    token = generate_token(user.username, user.id, timedelta(minutes=20))
+    return token
 

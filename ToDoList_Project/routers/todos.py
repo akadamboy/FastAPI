@@ -6,6 +6,7 @@ from database import SessionLocal, engine
 from sqlalchemy.orm import Session
 import models
 from models import Todos
+from .auth import get_user_from_token
 
 
 
@@ -21,10 +22,11 @@ def get_db():
         db.close()
 
 db_dependency = Annotated[Session, Depends(get_db)] # assigning Annotated to a variable
+user_dependency = Annotated[dict,Depends(get_user_from_token)]
+
+
 
 #creating a class to verify the data coming from post request body
-
-
 class TodoRequest(BaseModel):
     # id : Optional[int]  no need to add id here cause sql alchemy will take care of this
     title : str = Field(min_length=3)
@@ -37,8 +39,13 @@ class TodoRequest(BaseModel):
 
 @router.get("/", status_code= status.HTTP_200_OK)
 # async def get_all(db: Annotated[Session, Depends(get_db)]): #we can give the Annotated type here directly or we can assign it to a variable
-async def get_all(db: db_dependency):
-    return db.query(Todos).all()
+async def get_all(user:user_dependency, db: db_dependency):
+    # if user is None:
+    #     raise HTTPException(status_code=401, detail='authentication Failed')
+    user_id = user.get('user_id')
+    todo_model = db.query(Todos).filter(Todos.owner_id == user_id).all()
+    
+    return todo_model
     
 
 @router.get("/todo/{todo_id}", status_code= status.HTTP_200_OK)
@@ -51,9 +58,10 @@ async def get_todo_by_id(db: db_dependency, todo_id: int = Path(gt=0)):
 
 
 @router.post("/todo/create", status_code = status.HTTP_201_CREATED)
-async def create_todo(todo_item: TodoRequest, db: db_dependency): #take data from request body and create database session
-
-    todo_model = Todos(**todo_item.model_dump())  #map the values to the todo class variables and create a data model to add to the database
+async def create_todo(user: user_dependency ,todo_item: TodoRequest, db: db_dependency): #take data from request body and create database session
+    # if user is None:
+    #     raise HTTPException(status_code=401, detail='authentication Failed')  # not needed since we are already authenticating using a funciton
+    todo_model = Todos(**todo_item.model_dump(), owner_id = user.get('user_id'))  #map the values to the todo class variables and create a data model to add to the database
     db.add(todo_model) #insert the model to database
     db.commit() #commits the insert
 
